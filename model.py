@@ -326,10 +326,10 @@ def main():
     random.seed(2024)
 
     # initialise manager and size of the world 
-    manager = RebellionManager(max_pxcor=5, max_pycor=5)
+    manager = RebellionManager(max_pxcor=39, max_pycor=39)
 
     # intialise world parameters
-    manager.setup(initial_cop_density=27.4, initial_agent_density=20, vision=7.0, max_jail_term=10)
+    manager.setup(initial_cop_density=27.4, initial_agent_density=20, vision=7.0, max_jail_term=30)
 
     # start simulation
     NUM_TICKS_TO_SIMULATE = 100
@@ -341,7 +341,7 @@ def main():
             manager.update_movement_enabled(True)
 
     # generate report from simulation
-    manager.generate_report()
+    manager.generate_report(mute=True)
 
 if __name__ == '__main__':
     main()
