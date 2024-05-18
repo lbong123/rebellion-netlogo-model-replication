@@ -280,12 +280,16 @@ class RebellionManager:
             suspect.jail_term = random.randrange(self._max_jail_term)
 
     def update_government_legitimacy(self, government_legitimacy):
+        self.__validate_value("government_legitimacy", government_legitimacy, float, 0, 1)
         self._government_legitimacy = government_legitimacy
 
     def update_max_jail_term(self, max_jail_term):
+        self.__validate_value("max_jail_term", max_jail_term, int, 0, 50)
         self._max_jail_term = max_jail_term
 
     def update_movement_enabled(self, movement_enabled):
+        if not isinstance(movement_enabled, bool):
+            raise TypeError("movement_enabled must be a boolean.")
         self._movement_enabled = movement_enabled
 
     def generate_report(self):
@@ -334,14 +338,14 @@ def main():
     # start simulation
     NUM_TICKS_TO_SIMULATE = 100
     for tick in range(NUM_TICKS_TO_SIMULATE):
-        manager.go()
+        manager.go(mute=True)
         
         # enable agent movement halfway through
         if tick == NUM_TICKS_TO_SIMULATE // 2:
             manager.update_movement_enabled(True)
 
     # generate report from simulation
-    manager.generate_report(mute=True)
+    manager.generate_report()
 
 if __name__ == '__main__':
     main()
