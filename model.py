@@ -120,7 +120,7 @@ class RebellionManager:
                     if isinstance(neighbour, Agent):
                         neighbour_hardships.append(neighbour.perceived_hardship)
 
-                agent.perceived_hardship += 0.1 * ((sum(neighbour_hardships) / len(neighbour_hardships)) - agent.perceived_hardship)
+                agent.perceived_hardship += 0.1 * ((sum(neighbour_hardships) / max(len(neighbour_hardships), 0.0001)) - agent.perceived_hardship)
 
             self._coord_turtles[(row, col)] = [agent]
             self._turtle_coords[agent] = (row, col)
@@ -363,7 +363,7 @@ def main():
     random.seed(2024)
 
     # initialise manager and size of the world 
-    manager = RebellionManager(max_pxcor=39, max_pycor=39)
+    manager = RebellionManager(max_pxcor=10, max_pycor=10)
 
     # intialise world parameters
     manager.setup(initial_cop_density=27.4, initial_agent_density=20, vision=7.0, max_jail_term=30)
@@ -371,7 +371,7 @@ def main():
     # start simulation
     NUM_TICKS_TO_SIMULATE = 100
     for tick in range(NUM_TICKS_TO_SIMULATE):
-        manager.go(mute=True)
+        manager.go(mute=True, shift_perceived_hardship=True)
         
         # enable agent movement halfway through
         if tick == NUM_TICKS_TO_SIMULATE // 2:
