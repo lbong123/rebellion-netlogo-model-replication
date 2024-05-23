@@ -64,7 +64,7 @@ class RebellionManager:
         self._report = []
 
     def setup(self, initial_cop_density, initial_agent_density, vision, government_legitimacy=0.78, 
-                max_jail_term=25, movement_enabled=False):
+                max_jail_term=25, movement_enabled=False, aggregate_greivance=False):
         
         # perform validation
         self.__validate_parameters(initial_cop_density, initial_agent_density, vision, 
@@ -110,6 +110,17 @@ class RebellionManager:
 
             # generate a new agent
             agent = Agent()
+
+            # shift perceived hardships according to neighbours by a scale
+            # this will exacerbate the aggregate greivances calculations during the agent behaviour update step
+            if aggregate_greivance:
+                neighbour_hardships = []
+
+                for neighbour in self._coord_turtles[(row, col)]:
+                    if isinstance(neighbour, Agent):
+                        neighbour_hardships.append(neighbour.perceived_hardship)
+
+                agent.perceived_hardship += 0.1 * ((sum(neighbour_hardships) / len(neighbour_hardships)) - agent.perceived_hardship)
 
             self._coord_turtles[(row, col)] = [agent]
             self._turtle_coords[agent] = (row, col)
@@ -170,7 +181,7 @@ class RebellionManager:
 
         print("")
 
-    def go(self, mute=False):
+    def go(self, mute=False, shift_perceived_hardship=False, aggregate_greivance=False):
         for turtle, turtle_coord in self._turtle_coords.items():
             # Rule M: Move to a random site within your vision
             if (isinstance(turtle, Agent) and turtle.jail_term == 0) or isinstance(turtle, Cop):
@@ -178,7 +189,7 @@ class RebellionManager:
 
             # Rule A: Determine if each agent should be active or quiet
             if (isinstance(turtle, Agent) and turtle.jail_term == 0):
-                turtle.active = self.__determine_behaviour(turtle)
+                turtle.active = self.__determine_behaviour(turtle, shift_perceived_hardship, aggregate_greivance)
 
             # Rule C: Cops arrest a random active agent within their radius
             if isinstance(turtle, Cop):
@@ -248,9 +259,31 @@ class RebellionManager:
                 destination = random.choice(targets)
                 self.__move_turtle(turtle, coord, destination)
        
-    def __determine_behaviour(self, turtle: Agent):
-        # calculate grievance
-        grievance = turtle.perceived_hardship * (1 - self._government_legitimacy)
+    def __determine_behaviour(self, turtle: Agent, shift_perceived_hardship, aggregate_greivance):
+        # shift perceived hardship over time to either 0 or 1
+        if shift_perceived_hardship:
+            turtle.perceived_hardship += 0.1 * (turtle.perceived_hardship - 0.5)
+            
+            # ensure we dont go out of bounds
+            if turtle.perceived_hardship < 0:
+                turtle.perceived_hardship = 0
+            if turtle.perceived_hardship > 1:
+                turtle.perceived_hardship = 1
+
+        # get greivance of all neighbour agents
+        if aggregate_greivance:
+            current_turtle_location = self._turtle_coords[turtle]
+            neighbour_grievances = []
+
+            for neighbour in self._coord_turtles[current_turtle_location]:
+                if isinstance(neighbour, Agent):
+                    neighbour_grievances.append(neighbour.perceived_hardship * (1 - self._government_legitimacy))
+
+            grievance = sum(neighbour_grievances) / len(neighbour_grievances)
+
+        else:
+            # calculate grievance using standard formula
+            grievance = turtle.perceived_hardship * (1 - self._government_legitimacy)
 
         # estimate arrest probability
         c = len([x for x in self._turtle_coords if isinstance(turtle, Cop)])
