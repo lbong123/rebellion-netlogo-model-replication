@@ -23,6 +23,12 @@ class Agent:
     def __str__(self):
         return "Agent " + str(self.agent_id) + ": (a:" + str(self.active) + ", j:" + str(self.jail_term) + ")"
     
+    def __eq__(self, other):
+        return isinstance(other, Agent) and self.agent_id == other.agent_id
+    
+    def __hash__(self):
+        return hash("A:" + str(self.agent_id))
+    
 class Cop:
     numCops = 0
 
@@ -32,6 +38,12 @@ class Cop:
 
     def __str__(self):
         return "Cop " + str(self.cop_id)
+    
+    def __eq__(self, other):
+        return isinstance(other, Cop) and self.cop_id == other.cop_id
+    
+    def __hash__(self):
+        return hash("C:" + str(self.cop_id))
 
 class RebellionManager:
     def __validate_value(self, name, value, expected_type, min_value, max_value):
@@ -64,7 +76,7 @@ class RebellionManager:
         
         self._report = []
 
-    def setup(self, initial_cop_density, initial_agent_density, vision, government_legitimacy=0.78, 
+    def setup(self, initial_cop_density, initial_agent_density, vision, government_legitimacy=0.82, 
                 max_jail_term=25, movement_enabled=False, aggregate_greivance=False):
         
         # perform validation
@@ -183,7 +195,10 @@ class RebellionManager:
         print("")
 
     def go(self, mute=False, shift_perceived_hardship=False, aggregate_greivance=False):
-        for turtle, turtle_coord in self._turtle_coords.items():
+        # create a randomly shuffled set of turtle coords
+        shuffled_turtle_coords = random.sample(self._turtle_coords.items(), len(self._turtle_coords.items()))
+        
+        for turtle, turtle_coord in shuffled_turtle_coords:
             # Rule M: Move to a random site within your vision
             if (isinstance(turtle, Agent) and turtle.jail_term == 0) or isinstance(turtle, Cop):
                 self.__move(turtle, turtle_coord)
@@ -194,7 +209,7 @@ class RebellionManager:
 
             # Rule C: Cops arrest a random active agent within their radius
             if isinstance(turtle, Cop):
-                self.__enforce(turtle, turtle_coord)
+                self.__enforce(turtle, self._turtle_coords[turtle])
 
         # Jailed agents get their term reduced at the end of each clock tick
         # The Netlogo implementation doesn't account for freshly jailed agents
@@ -210,13 +225,13 @@ class RebellionManager:
         active = 0
         for turtle in self._turtle_coords.keys():
             if isinstance(turtle, Agent):
-                if turtle.active:
+                if turtle.jail_term != 0:
+                    jailed += 1
+                elif turtle.active:
                     active += 1
                 else:
                     quiet += 1
 
-                if turtle.jail_term != 0:
-                    jailed += 1
         self._report.append({"tick": self._tick, "quiet": quiet, "jailed": jailed, "active": active})
         
         # print new state
@@ -228,7 +243,15 @@ class RebellionManager:
         self._coord_turtles[destination].append(turtle)
 
         # remove from source
+        before = self._coord_turtles[source]
         self._coord_turtles[source] = [c for c in self._coord_turtles[source] if c != turtle]
+        if len(before) != 0 and len(before) == len(self._coord_turtles[source]):
+            for x in before:
+                print(str(x))
+            print(str(turtle))
+            print("failed")
+            print(self._tick)
+            raise ValueError
 
         # change turtle location
         self._turtle_coords[turtle] = destination
@@ -281,14 +304,20 @@ class RebellionManager:
                     neighbour_grievances.append(neighbour.perceived_hardship * (1 - self._government_legitimacy))
 
             grievance = sum(neighbour_grievances) / len(neighbour_grievances)
-
         else:
             # calculate grievance using standard formula
             grievance = turtle.perceived_hardship * (1 - self._government_legitimacy)
 
         # estimate arrest probability
-        c = len([x for x in self._turtle_coords if isinstance(turtle, Cop)])
-        a = 1 + len([x for x in self._turtle_coords if isinstance(turtle, Agent)])
+        c = 0
+        a = 1
+        for neighbour_coord in self._coord_neighbours[self._turtle_coords[turtle]]:
+            for neighbour in self._coord_turtles[neighbour_coord]:
+                if isinstance(neighbour, Cop):
+                    c += 1
+                if isinstance(neighbour, Agent) and neighbour.active:
+                    a += 1
+
         estimated_arrest_probability = 1 - math.exp(-K * math.floor(c / a))
 
         return (grievance - turtle.risk_aversion * estimated_arrest_probability) > THRESHOLD
@@ -307,6 +336,10 @@ class RebellionManager:
             suspect, suspect_coord = random.choice(suspects)
 
             # move cop to suspect
+            if coord != self._turtle_coords[turtle]:
+                print("Failed")
+                print(coord)
+                print(self._turtle_coords[turtle])
             self.__move_turtle(turtle, coord, suspect_coord)
 
             # arrest suspect
