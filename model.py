@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 import math
 import csv
+import statistics as st
 
 K = 2.3
 THRESHOLD = 0.1
@@ -330,6 +331,21 @@ class RebellionManager:
             print("Nothing to Report")
             return
 
+        # generating statstics
+        quiet = []
+        jailed = []
+        active = []
+
+        for x in self._report:
+            quiet.append(x["quiet"])
+            jailed.append(x["jailed"])
+            active.append(x["active"])
+
+        print("Generating statistics for the run")
+        print(f"quiet:\n mean = {st.mean(quiet)}, std = {st.stdev(quiet)}, max = {max(quiet)}, min = {min(quiet)}")
+        print(f"jailed:\n mean = {st.mean(jailed)}, std = {st.stdev(jailed)}, max = {max(jailed)}, min = {min(jailed)}")
+        print(f"active:\n mean = {st.mean(active)}, std = {st.stdev(active)}, max = {max(active)}, min = {min(active)}\n")
+
         print("Saving to csv...")
 
         # Open a file in write mode.
@@ -360,7 +376,7 @@ def main():
     Below provides a sample of how the RebellionManager may be used to simulate rebellion within a population
     """
     # intialise seed for random number generator
-    random.seed(2024)
+    random.seed(12)
 
     # initialise manager and size of the world 
     manager = RebellionManager(max_pxcor=39, max_pycor=39)
@@ -371,7 +387,7 @@ def main():
     # start simulation
     NUM_TICKS_TO_SIMULATE = 100
     for tick in range(NUM_TICKS_TO_SIMULATE):
-        manager.go(mute=True, shift_perceived_hardship=True)
+        manager.go(mute=True)
 
     # generate report from simulation
     manager.generate_report()
