@@ -196,7 +196,8 @@ class RebellionManager:
 
     def go(self, mute=False, shift_perceived_hardship=False, aggregate_greivance=False):
         # create a randomly shuffled set of turtle coords
-        shuffled_turtle_coords = random.sample(self._turtle_coords.items(), len(self._turtle_coords.items()))
+        shuffled_turtle_coords = list(self._turtle_coords.items())
+        random.shuffle(shuffled_turtle_coords)
         
         for turtle, turtle_coord in shuffled_turtle_coords:
             # Rule M: Move to a random site within your vision
